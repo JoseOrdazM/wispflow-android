@@ -18,7 +18,7 @@ jobs:
       
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.19.0'
+          flutter-version: '3.24.0'
           channel: 'stable'
       
       - name: Get dependencies
@@ -37,7 +37,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.1
-          name: WispFlow Android v1.1 — Fixed overlay service
+          name: WispFlow Android v1.1 --- Fixed overlay service
           body: |
             ## Fixes
             - Fixed foreground service crash (notification channel)
