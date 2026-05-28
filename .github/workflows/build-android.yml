@@ -1,243 +1,38 @@
-# =============================================================================
-# Build Android APK — Release v1.1
-# =============================================================================
-# Trigger:
-#   - Push a tag v* (ej. v1.1, v1.2, …)
-#   - Manual (workflow_dispatch) con versión por defecto v1.1
-#
-# Versiones:
-#   Flutter  : 3.24.3  (stable channel) — última 3.24.x
-#   Java     : temurin-17
-#   Gradle   : 8.5     (coincide con gradle-wrapper.properties)
-# =============================================================================
-name: Build Android APK
+name: Build Android
 
 on:
   push:
-    tags:
-      - 'v*'
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version tag (e.g. v1.1)'
-        required: true
-        default: 'v1.1'
-
-env:
-  FLUTTER_VERSION: '3.24.3'
-  JAVA_VERSION: '17'
-  JAVA_DISTRO: 'temurin'
-  GRADLE_VERSION: '8.5'
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   build:
-    name: Build Release APK (signed)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
 
     steps:
-      # ──────────────────────────────────────────────
-      # 1. Checkout
-      # ──────────────────────────────────────────────
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # ──────────────────────────────────────────────
-      # 2. Setup Java 17 (Temurin) con cache
-      # ──────────────────────────────────────────────
-      - name: Setup Java ${{ env.JAVA_VERSION }} (${{ env.JAVA_DISTRO }})
+      - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
-          java-version: ${{ env.JAVA_VERSION }}
-          distribution: ${{ env.JAVA_DISTRO }}
-          cache: gradle
+          java-version: '17'
+          distribution: 'temurin'
 
-      # ──────────────────────────────────────────────
-      # 3. Validate Gradle wrapper checksum
-      # ──────────────────────────────────────────────
-      - name: Validate Gradle wrapper
-        uses: gradle/actions/wrapper-validation@v3
-
-      # ──────────────────────────────────────────────
-      # 4. Setup Gradle (versión exacta 8.5)
-      # ──────────────────────────────────────────────
-      - name: Setup Gradle ${{ env.GRADLE_VERSION }}
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: ${{ env.GRADLE_VERSION }}
-
-      # ──────────────────────────────────────────────
-      # 5. Setup Flutter 3.24.3 (stable)
-      # ──────────────────────────────────────────────
-      - name: Setup Flutter ${{ env.FLUTTER_VERSION }}
+      - name: Setup Flutter 3.24.5
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
+          flutter-version: '3.24.5'
           channel: 'stable'
-          cache: true
 
-      # ──────────────────────────────────────────────
-      # 6. Flutter dependencies & static analysis
-      # ──────────────────────────────────────────────
-      - name: Flutter pub get
+      - name: Install dependencies
         run: flutter pub get
 
-      - name: Run Flutter analyze
-        run: flutter analyze
+      - name: Build APK
+        run: flutter build apk --release
 
-      - name: Run Flutter tests
-        run: flutter test
-
-      # ──────────────────────────────────────────────
-      # 7. Decode Keystore desde secretos (si existen)
-      #    Si no hay secretos, se genera un keystore
-      #    auto-firmado para CI.
-      # ──────────────────────────────────────────────
-      - name: Decode Keystore from secrets
-        id: keystore
-        env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-        run: |
-          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
-            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/keystore.jks
-            echo "keystore_source=secrets" >> "$GITHUB_OUTPUT"
-            echo "✅ Keystore decoded from secrets"
-          else
-            echo "keystore_source=ci-generated" >> "$GITHUB_OUTPUT"
-            echo "⚠️ No ANDROID_KEYSTORE_BASE64 secret — will generate CI keystore"
-          fi
-
-      # ──────────────────────────────────────────────
-      # 8. Generate CI keystore (fallback si no hay secretos)
-      # ──────────────────────────────────────────────
-      - name: Generate CI Keystore (fallback)
-        if: steps.keystore.outputs.keystore_source == 'ci-generated'
-        run: |
-          KEYSTORE_DIR="android/app"
-          mkdir -p "$KEYSTORE_DIR"
-          keytool -genkey -v \
-            -keystore "$KEYSTORE_DIR/keystore.jks" \
-            -alias upload \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -storepass "android" \
-            -keypass "android" \
-            -dname "CN=CI, OU=CI, O=CI, L=CI, S=CI, C=CI"
-          echo "✅ CI keystore generated at $KEYSTORE_DIR/keystore.jks"
-
-      # ──────────────────────────────────────────────
-      # 9. Inject signing config into app/build.gradle
-      #    Usa env vars si vienen de secrets, o valores
-      #    fijos si es keystore generado en CI.
-      # ──────────────────────────────────────────────
-      - name: Inject signing config into app/build.gradle
-        env:
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: |
-          APP_BUILD="android/app/build.gradle"
-
-          # Determinar credenciales según origen del keystore
-          if [ "${{ steps.keystore.outputs.keystore_source }}" = "secrets" ]; then
-            STORE_PASS="$ANDROID_KEYSTORE_PASSWORD"
-            KEY_ALIAS="$ANDROID_KEY_ALIAS"
-            KEY_PASS="$ANDROID_KEY_PASSWORD"
-          else
-            STORE_PASS="android"
-            KEY_ALIAS="upload"
-            KEY_PASS="android"
-          fi
-
-          # Validar que las credenciales no estén vacías
-          if [ -z "$STORE_PASS" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASS" ]; then
-            echo "❌ ERROR: Missing signing credentials"
-            exit 1
-          fi
-
-          echo "🔑 Using keystore alias: $KEY_ALIAS"
-
-          # Eliminar bloque signingConfigs existente si lo hay
-          sed -i '/signingConfigs {/,/^    }/d' "$APP_BUILD"
-
-          # Insertar signingConfigs antes de buildTypes
-          # Usamos un delimiter distinto (#) para evitar conflictos con /
-          sed -i "s#buildTypes {#signingConfigs {\n        release {\n            storeFile file('keystore.jks')\n            storePassword '$STORE_PASS'\n            keyAlias '$KEY_ALIAS'\n            keyPassword '$KEY_PASS'\n        }\n    }\n\n    buildTypes {#" "$APP_BUILD"
-
-          # Asignar signingConfig al buildType release
-          sed -i 's/release {/release {\n            signingConfig signingConfigs.release/' "$APP_BUILD"
-
-          echo "✅ Signing config injected (source: ${{ steps.keystore.outputs.keystore_source }})"
-
-      # ──────────────────────────────────────────────
-      # 10. Build APK release (split-per-abi)
-      # ──────────────────────────────────────────────
-      - name: Build APK release (split-per-abi)
-        run: flutter build apk --release --split-per-abi
-
-      - name: List APK artifacts
-        run: ls -lh build/app/outputs/flutter-apk/
-
-      # ──────────────────────────────────────────────
-      # 11. Verify APK signature
-      # ──────────────────────────────────────────────
-      - name: Verify APK signature
-        run: |
-          for apk in build/app/outputs/flutter-apk/*.apk; do
-            echo "=== Verifying $apk ==="
-            unzip -p "$apk" META-INF/*.RSA 2>/dev/null | keytool -printcert -J"-Dfile.encoding=UTF-8" || echo "⚠️ No RSA cert found (unsigned?)"
-          done
-
-      # ──────────────────────────────────────────────
-      # 12. Upload APKs como artefactos del workflow
-      # ──────────────────────────────────────────────
-      - name: Upload APKs as workflow artifacts
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: android-apks-${{ github.ref_name }}
-          path: build/app/outputs/flutter-apk/*.apk
-          if-no-files-found: error
-
-      # ──────────────────────────────────────────────
-      # 13. Upload APKs a GitHub Release
-      #     Se activa solo con push a tag v*.
-      #     Usa el tag del push como nombre de release.
-      #     Si es workflow_dispatch, usa el tag ingresado.
-      # ──────────────────────────────────────────────
-      - name: Determine release tag
-        id: release_tag
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "tag=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Upload APKs to GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.release_tag.outputs.tag }}
-          name: Release ${{ steps.release_tag.outputs.tag }}
-          body: |
-            ## Release ${{ steps.release_tag.outputs.tag }}
-
-            ### Cambios
-            - Build automatizado con GitHub Actions
-            - Flutter ${{ env.FLUTTER_VERSION }}
-            - Gradle ${{ env.GRADLE_VERSION }}
-            - Java ${{ env.JAVA_VERSION }} (${{ env.JAVA_DISTRO }})
-
-            ### APKs generados
-            - `app-armeabi-v7a-release.apk` (ARM 32-bit)
-            - `app-arm64-v8a-release.apk` (ARM 64-bit)
-            - `app-x86_64-release.apk` (x86_64)
-          files: |
-            build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
-            build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
-            build/app/outputs/flutter-apk/app-x86_64-release.apk
-          make_latest: false
-          fail_on_unmatched_files: false
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: app-release
+          path: build/app/outputs/flutter-apk/app-release.apk
