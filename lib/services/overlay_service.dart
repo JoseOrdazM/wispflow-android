@@ -25,9 +25,13 @@ class OverlayService {
     _transcriber = TranscriptionService(s);
   }
 
-  Future<void> startOverlay() async {
-    if (!await FlutterOverlayWindow.isPermissionGranted()) {
+  /// Returns true if overlay was shown, false if permission is missing
+  Future<bool> startOverlay() async {
+    final hasPermission = await FlutterOverlayWindow.isPermissionGranted();
+    if (!hasPermission) {
       await FlutterOverlayWindow.requestPermission();
+      // requestPermission opens Android settings — user must grant and come back
+      return false;
     }
     await FlutterOverlayWindow.showOverlay(
       height: 80,
@@ -36,6 +40,7 @@ class OverlayService {
       enableDrag: true,
       flag: OverlayFlag.defaultFlag,
     );
+    return true;
   }
 
   Future<void> stopOverlay() async {
