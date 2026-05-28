@@ -43,10 +43,9 @@ jobs:
           name: WispFlow Android v1.4 — Overlay bubble fix
           body: |
             ## Fixes
-            - Fixed floating bubble rendering (standalone overlay widget, no shared state)
-            - Overlay bubble positioned bottom-right (draggable)
-            - Tap bubble to record, tap again to stop and transcribe
-            - Transcription goes to clipboard
+            - Fixed floating bubble rendering (standalone overlay widget)
+            - Overlay bubble positioned bottom-right, draggable
+            - Tap mic to record, tap again to transcribe to clipboard
           files: build/app/outputs/flutter-apk/app-release.apk
           token: ${{ secrets.GITHUB_TOKEN }}
           make_latest: true
