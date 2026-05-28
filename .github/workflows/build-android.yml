@@ -1,38 +1,52 @@
-name: Build Android
+name: Build Android APK
 
 on:
   push:
-    branches: [ main, develop ]
-  pull_request:
     branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Java 17
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
-          java-version: '17'
-          distribution: 'temurin'
+          distribution: "temurin"
+          java-version: "17"
 
-      - name: Setup Flutter 3.24.5
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.5'
-          channel: 'stable'
+          flutter-version: "3.24.0"
+          channel: "stable"
 
-      - name: Install dependencies
+      - name: Get dependencies
         run: flutter pub get
 
       - name: Build APK
         run: flutter build apk --release
 
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-release
+          name: wispflow-android-release
           path: build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Create Release v1.4
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.4
+          name: WispFlow Android v1.4 — Overlay bubble fix
+          body: |
+            ## Fixes
+            - Fixed floating bubble rendering (standalone overlay widget, no shared state)
+            - Overlay bubble positioned bottom-right (draggable)
+            - Tap bubble to record, tap again to stop and transcribe
+            - Transcription goes to clipboard
+          files: build/app/outputs/flutter-apk/app-release.apk
+          token: ${{ secrets.GITHUB_TOKEN }}
+          make_latest: true
