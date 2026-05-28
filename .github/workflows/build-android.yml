@@ -36,16 +36,16 @@ jobs:
           name: wispflow-android-release
           path: build/app/outputs/flutter-apk/app-release.apk
 
-      - name: Create Release v1.1
+      - name: Create Release v1.2
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.1
-          name: WispFlow Android v1.1 — Fixed overlay service
+          tag_name: v1.2
+          name: WispFlow Android v1.2 — Fixed permission flow
           body: |
             ## Fixes
-            - Fixed foreground service crash (notification channel)
-            - Added missing Android 14 permissions
-            - Floating bubble now works correctly
+            - Fixed overlay permission flow (button now correctly waits for user to grant permission)
+            - Shows message when permission needs to be granted
+            - Auto-starts bubble when returning from permission settings
           files: build/app/outputs/flutter-apk/app-release.apk
           token: ${{ secrets.GITHUB_TOKEN }}
           make_latest: true
