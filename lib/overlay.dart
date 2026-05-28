@@ -30,9 +30,13 @@ class _OverlayBubbleState extends State<OverlayBubble> {
       if (data is String) {
         if (mounted) {
           setState(() {
-            if (data == "state:recording") _state = _BubbleState.recording;
-            else if (data == "state:processing") _state = _BubbleState.processing;
-            else if (data == "state:idle") _state = _BubbleState.idle;
+            if (data == "state:recording") {
+              _state = _BubbleState.recording;
+            } else if (data == "state:processing") {
+              _state = _BubbleState.processing;
+            } else if (data == "state:idle") {
+              _state = _BubbleState.idle;
+            }
           });
         }
       }
@@ -47,9 +51,12 @@ class _OverlayBubbleState extends State<OverlayBubble> {
 
   Color get _color {
     switch (_state) {
-      case _BubbleState.idle: return Colors.deepPurple;
-      case _BubbleState.recording: return Colors.red;
-      case _BubbleState.processing: return Colors.orange;
+      case _BubbleState.idle:
+        return Colors.deepPurple;
+      case _BubbleState.recording:
+        return Colors.red;
+      case _BubbleState.processing:
+        return Colors.orange;
     }
   }
 
@@ -62,8 +69,10 @@ class _OverlayBubbleState extends State<OverlayBubble> {
       case _BubbleState.processing:
         return const SizedBox(
           width: 26, height: 26,
-          child: CircularProgressIndicator(strokeWidth: 3,
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.white)),
+          child: CircularProgressIndicator(
+            strokeWidth: 3,
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+          ),
         );
     }
   }
