@@ -19,54 +19,61 @@ class OverlayService {
   final _stateController = StreamController<BubbleState>.broadcast();
 
   Stream<BubbleState> get stateStream => _stateController.stream;
-  BubbleState get currentState => _state;
 
   void setSettings(AppSettings s) {
     _transcriber = TranscriptionService(s);
   }
 
-  /// Returns true if overlay was shown, false if permission is missing
   Future<bool> startOverlay() async {
     final hasPermission = await FlutterOverlayWindow.isPermissionGranted();
     if (!hasPermission) {
       await FlutterOverlayWindow.requestPermission();
-      // requestPermission opens Android settings — user must grant and come back
       return false;
     }
     await FlutterOverlayWindow.showOverlay(
       height: 80,
       width: 80,
-      alignment: OverlayAlignment.topRight,
+      alignment: OverlayAlignment.bottomRight,
       enableDrag: true,
       flag: OverlayFlag.defaultFlag,
+      positionGravity: PositionGravity.auto,
     );
+    // Listen for bubble taps from the overlay
+    FlutterOverlayWindow.overlayListener.listen((data) {
+      if (data == "bubble:tap") {
+        onBubbleTap();
+      }
+    });
     return true;
   }
 
   Future<void> stopOverlay() async {
     await FlutterOverlayWindow.closeOverlay();
+    _setState(BubbleState.idle);
   }
 
   Future<void> onBubbleTap() async {
     if (_state == BubbleState.idle) {
-      await _audio.startRecording();
       _setState(BubbleState.recording);
+      FlutterOverlayWindow.shareData("state:recording");
+      await _audio.startRecording();
     } else if (_state == BubbleState.recording) {
       _setState(BubbleState.processing);
+      FlutterOverlayWindow.shareData("state:processing");
       final path = await _audio.stopRecording();
       if (path == null || _transcriber == null) {
         _setState(BubbleState.idle);
+        FlutterOverlayWindow.shareData("state:idle");
         return;
       }
       try {
         final text = await _transcriber!.transcribe(path);
         await Clipboard.setData(ClipboardData(text: text));
         try { File(path).delete(); } catch (_) {}
-        _setState(BubbleState.idle);
-        await FlutterOverlayWindow.shareData("transcribed:$text");
-      } catch (e) {
-        _setState(BubbleState.idle);
-      }
+        FlutterOverlayWindow.shareData("transcribed:$text");
+      } catch (_) {}
+      _setState(BubbleState.idle);
+      FlutterOverlayWindow.shareData("state:idle");
     }
   }
 
