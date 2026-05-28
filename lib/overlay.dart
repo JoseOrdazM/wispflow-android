@@ -1,7 +1,8 @@
 import "package:flutter/material.dart";
 import "services/overlay_service.dart";
 
-void main() {
+@pragma("vm:entry-point")
+void overlayMain() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const MaterialApp(
     debugShowCheckedModeBanner: false,
