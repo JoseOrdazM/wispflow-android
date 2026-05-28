@@ -16,13 +16,13 @@ jobs:
 
       - uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: "temurin"
+          java-version: "17"
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
-          channel: 'stable'
+          flutter-version: "3.24.0"
+          channel: "stable"
 
       - name: Get dependencies
         run: flutter pub get
@@ -36,16 +36,16 @@ jobs:
           name: wispflow-android-release
           path: build/app/outputs/flutter-apk/app-release.apk
 
-      - name: Create Release v1.2
+      - name: Create Release v1.3
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.2
-          name: WispFlow Android v1.2 — Fixed permission flow
+          tag_name: v1.3
+          name: WispFlow Android v1.3 — Floating bubble fix
           body: |
             ## Fixes
-            - Fixed overlay permission flow (button now correctly waits for user to grant permission)
-            - Shows message when permission needs to be granted
-            - Auto-starts bubble when returning from permission settings
+            - Fixed floating bubble not appearing on device (overlay entry point pragma)
+            - Tap mic to record, tap again to stop and transcribe
+            - Transcription copied to clipboard automatically
           files: build/app/outputs/flutter-apk/app-release.apk
           token: ${{ secrets.GITHUB_TOKEN }}
           make_latest: true
