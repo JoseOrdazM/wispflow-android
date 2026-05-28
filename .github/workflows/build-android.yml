@@ -36,14 +36,14 @@ jobs:
           name: wispflow-android-release
           path: build/app/outputs/flutter-apk/app-release.apk
 
-      - name: Create Release v1.3
+      - name: Create Release v1.1
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.3
-          name: WispFlow Android v1.3 — Floating bubble fix
+          tag_name: v1.1
+          name: WispFlow Android v1.1
           body: |
-            ## Fixes
-            - Fixed floating bubble not appearing on device (overlay entry point pragma)
+            ## WispFlow Android v1.1
+            - Floating microphone overlay for voice transcription
             - Tap mic to record, tap again to stop and transcribe
             - Transcription copied to clipboard automatically
           files: build/app/outputs/flutter-apk/app-release.apk
