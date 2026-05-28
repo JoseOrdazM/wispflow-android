@@ -1,0 +1,65 @@
+name: Build and Release APK
+
+on:
+  push:
+    branches: [ master, main ]
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+
+      - name: Install dependencies
+        run: |
+          cd go/src/hotkey
+          go mod init hotkey
+          go mod tidy
+
+      - name: Build for Windows (amd64)
+        run: |
+          cd go/src/hotkey
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w -H windowsgui" -o hotkey.exe .
+          ls -lh hotkey.exe
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotkey-windows-amd64
+          path: go/src/hotkey/hotkey.exe
+          retention-days: 30
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body: |
+            ## Hotkey Global Windows v${{ github.ref_name }}
+            
+            Binario compilado para Windows amd64.
+            
+            ### Uso
+            Ejecutar `hotkey.exe` y presionar **Ctrl+Space** para iniciar/detener grabación.
+            
+            ### Cambios
+            - Hotkey global Ctrl+Space
+            - Loop de mensajes Windows
+            - Soporte para grabación de audio
+          files: |
+            go/src/hotkey/hotkey.exe
+          draft: false
+          prerelease: false
