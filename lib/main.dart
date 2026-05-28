@@ -17,14 +17,16 @@ class WispFlowApp extends StatefulWidget {
   State<WispFlowApp> createState() => _WispFlowAppState();
 }
 
-class _WispFlowAppState extends State<WispFlowApp> {
+class _WispFlowAppState extends State<WispFlowApp> with WidgetsBindingObserver {
   final OverlayService _overlay = OverlayService();
   AppSettings _settings = AppSettings();
   bool _bubbleActive = false;
+  bool _needsPermission = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     AppSettings.load().then((s) {
       _settings = s;
       _overlay.setSettings(s);
@@ -62,13 +64,44 @@ class _WispFlowAppState extends State<WispFlowApp> {
     });
   }
 
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // When user returns from Android settings after granting permission
+    if (state == AppLifecycleState.resumed && _needsPermission) {
+      _needsPermission = false;
+      _tryStartOverlay();
+    }
+  }
+
+  Future<void> _tryStartOverlay() async {
+    final started = await _overlay.startOverlay();
+    if (started) {
+      setState(() {
+        _bubbleActive = true;
+        _needsPermission = false;
+      });
+    } else {
+      // Permission requested — user sent to settings
+      setState(() {
+        _bubbleActive = false;
+        _needsPermission = true;
+      });
+    }
+  }
+
   Future<void> _toggleBubble() async {
     if (_bubbleActive) {
       await _overlay.stopOverlay();
+      setState(() => _bubbleActive = false);
     } else {
-      await _overlay.startOverlay();
+      await _tryStartOverlay();
     }
-    setState(() => _bubbleActive = !_bubbleActive);
   }
 
   @override
@@ -110,6 +143,22 @@ class _WispFlowAppState extends State<WispFlowApp> {
                   "Floating voice transcription",
                   style: TextStyle(color: Colors.grey[600]),
                 ),
+                if (_needsPermission) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      border: Border.all(color: Colors.orange),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      "Permiso requerido: activa \"Mostrar sobre otras apps\" para WispFlow en Ajustes, luego pulsa Start Bubble.",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.deepOrange),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 32),
                 SizedBox(
                   width: double.infinity,
