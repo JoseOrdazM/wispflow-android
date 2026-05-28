@@ -1,8 +1,8 @@
-import "dart:io";
-import "package:record/record.dart";
+import 'dart:io';
+import 'package:record/record.dart';
 
 class AudioRecorderService {
-  final AudioRecorder _recorder = AudioRecorder();
+  final Record _recorder = Record();
   String? _outputPath;
 
   Future<bool> hasPermission() async {
@@ -11,14 +11,12 @@ class AudioRecorderService {
 
   Future<void> startRecording() async {
     final dir = Directory.systemTemp;
-    _outputPath = "${dir.path}/wf_${DateTime.now().millisecondsSinceEpoch}.wav";
+    _outputPath = '${dir.path}/wf_${DateTime.now().millisecondsSinceEpoch}.wav';
     await _recorder.start(
-      const RecordConfig(
-        encoder: AudioEncoder.wav,
-        sampleRate: 16000,
-        numChannels: 1,
-      ),
       path: _outputPath!,
+      encoder: AudioEncoder.wav,
+      samplingRate: 16000,
+      numChannels: 1,
     );
   }
 
