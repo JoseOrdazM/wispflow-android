@@ -36,14 +36,15 @@ jobs:
           name: wispflow-android-release
           path: build/app/outputs/flutter-apk/app-release.apk
 
-      - name: Create Release v1.4
+      - name: Create Release v1.5
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.4
-          name: WispFlow Android v1.4 — Overlay bubble fix
+          tag_name: v1.5
+          name: WispFlow Android v1.5 — Overlay bubble fix
           body: |
             ## Fixes
-            - Fixed floating bubble rendering (standalone overlay widget)
+            - Fixed floating bubble rendering (standalone overlay widget, no shared state with main app)
+            - Fixed Gradle 7.6.1 + AGP 7.4.2 compatibility (was Gradle 8.7)
             - Overlay bubble positioned bottom-right, draggable
             - Tap mic to record, tap again to transcribe to clipboard
           files: build/app/outputs/flutter-apk/app-release.apk
